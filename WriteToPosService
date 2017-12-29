@@ -1,0 +1,55 @@
+package com.fdc.ucom.cs.conexxus.socket.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.integration.support.MessageBuilder;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.handler.annotation.Headers;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.xml.transform.StringResult;
+
+import com.fdc.ucom.cs.common.util.CSDefaultResponse;
+import com.fdc.ucom.cs.common.util.MessageHeaderNames;
+import com.fdc.util.logging.AroundLog;
+
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+
+public class WriteToPosService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(WriteToPosService.class);
+
+    @AroundLog
+    public void sendToPos(@Payload final StringResult payload, @Headers MessageHeaders headers) throws Exception {
+        final String xml = payload.toString();
+        
+        Channel channel = null;
+        if(headers.containsKey(MessageHeaderNames.RETURN_CHANNEL)) {
+        	channel = (Channel) headers.get(MessageHeaderNames.RETURN_CHANNEL);
+        } else {
+        	channel = (Channel) headers.get(MessageHeaderNames.CLIENT_CHANNEL);
+        }
+
+        if (null != xml && null != channel
+        		&& channel.isActive()) {
+        	  final ChannelFuture status = channel.writeAndFlush(Unpooled.copiedBuffer(xml.getBytes()));
+            // TODO: Waiting for the async operation to get completed
+            status.get();
+            LOG.info("Channel write status: {} ", status.isSuccess());
+        } else {
+        	if(xml == null) {
+        		LOG.error("Not sending to POS as empty message was received, Payload is : {} ", payload);
+        	}else {
+            if(channel!= null) {
+              	channel.close();
+                LOG.error("Not sending to POS as channel is inactive !!!!!");
+            }else {
+                LOG.error("Not sending to POS as channel is empty !!!!!");
+            }
+        		throw new MessagingException(MessageBuilder.withPayload(payload).copyHeaders(headers).build(), new Throwable(CSDefaultResponse.SERVER_ERROR.getResponseCode()));
+        	}
+        }
+    }
+}

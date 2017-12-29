@@ -33,6 +33,8 @@ public class EndpointServer {
     private static final int LOCAL_CACHE_INITIAL_DELAY = 1 * 15 * 1000;
     
     private static boolean serverStarted = false;
+    
+    private ChannelFuture cf;
 
     @Autowired
     @Qualifier("endpointBootstrap")
@@ -42,16 +44,23 @@ public class EndpointServer {
     public void start() throws InterruptedException {
     	if(!serverStarted) {
     		this.endpointBootstrap.group(bossGroup, workerGroup);
-    		ChannelFuture f = this.endpointBootstrap.bind().sync();
-    		
+            serverStarted = true;
+    		ChannelFuture cf = this.endpointBootstrap.bind().sync();
     		LOGGER.info("Conexxus Netty Server boot strap started");
-    		f.channel().closeFuture().sync();
-    		serverStarted = true;
+    		//f.channel().closeFuture().sync();
     	}
     }
 
     @PreDestroy
     public void stop() {
+        if(cf != null) {
+    		try {
+    			cf.channel().closeFuture().sync();
+    		} catch (InterruptedException e) {
+    			LOGGER.info("", e.toString());
+			}
+    	}
+    	LOGGER.info("Release all the External Resources");
         workerGroup.shutdownGracefully();
         bossGroup.shutdownGracefully();
         LOGGER.info("Conexxus Netty Server boot strap stopped");

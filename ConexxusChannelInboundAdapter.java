@@ -62,4 +62,10 @@ public class ConexxusChannelInboundAdapter extends ChannelInboundHandlerAdapter 
     	LOGGER.info("Channel id: {} Unregistered", ctx.channel().id());
     	super.channelUnregistered(ctx);
     }
+    @Override
+    public void channelInactive(final ChannelHandlerContext ctx) throws Exception { 
+    	LOGGER.error("Channel becomes InActive : {}",ctx.channel().id());
+    	super.channelInactive(ctx);
+    }
+    
 }
